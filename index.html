@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Work Log Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
+
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
+  <script defer src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">⏱</div>
+        <div class="brand-title">Work Log Tracker</div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" data-page="quri">📄 <span>QURI</span></button>
+        <button class="nav-item" data-page="htp">📅 <span>HTP</span></button>
+        <button class="nav-item" data-page="reports">📊 <span>Reports</span></button>
+        <button class="nav-item" data-page="settings">⚙️ <span>Settings</span></button>
+      </nav>
+
+      <div class="nav-divider"></div>
+
+      <button class="nav-item" id="exportCurrentBtn">⬇️ <span>Export</span></button>
+      <button class="nav-item" data-page="help">❔ <span>Help</span></button>
+    </aside>
+
+    <main class="main-content">
+      <section id="quriPage" class="page active">
+        <header class="topbar">
+          <div>
+            <h1>QURI Tracker</h1>
+            <p class="muted">Tasks, hours, and daily earnings.</p>
+          </div>
+
+          <div class="topbar-actions">
+            <div class="month-picker-wrap">
+              <label class="picker-label">Pick a month to generate</label>
+              <button id="openQuriMonthPicker" class="month-picker-trigger" type="button">
+                <span id="selectedQuriMonthLabel">Select Month</span>
+                <span class="month-picker-caret">▾</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <section class="summary-grid four">
+          <article class="summary-card">
+            <div class="card-icon blue">⏱</div>
+            <div>
+              <p>Rate per hour</p>
+              <div class="inline-input-wrap">
+                <span>$</span>
+                <input id="quriRate" type="number" min="0" step="0.01" />
+                <button class="icon-btn" title="Editable rate">✎</button>
+              </div>
+
+              <div class="rate-refresh-row">
+                <small id="quriExchangeText">Loading PHP rate...</small>
+                <button class="mini-btn" id="refreshRateQuriBtn" type="button">Refresh</button>
+              </div>
+              <small class="rate-note">Auto-refreshes every 5 minutes.</small>
+            </div>
+          </article>
+
+          <article class="summary-card">
+            <div class="card-icon green">🕒</div>
+            <div>
+              <p>Total hours</p>
+              <h2 id="quriTotalHours">0.00</h2>
+            </div>
+          </article>
+
+          <article class="summary-card">
+            <div class="card-icon blue">＄</div>
+            <div>
+              <p>Total earnings (USD)</p>
+              <h2 id="quriTotalUsd">$0.00</h2>
+            </div>
+          </article>
+
+          <article class="summary-card">
+            <div class="card-icon purple">₱</div>
+            <div>
+              <p>Total earnings (PHP)</p>
+              <h2 id="quriTotalPhp">₱0.00</h2>
+            </div>
+          </article>
+        </section>
+
+        <section class="table-card">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Day</th>
+                  <th>Tasks</th>
+                  <th>Hours</th>
+                  <th>Earnings ($)</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="quriTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <div class="info-bar">
+          ℹ️ Weekends are marked automatically. Exchange rate refreshes every 5 minutes. Rate, hours, and tasks can be edited inline.
+        </div>
+      </section>
+
+      <section id="htpPage" class="page">
+        <header class="topbar">
+          <div>
+            <h1>HTP Tracker</h1>
+            <p class="muted">Hours-only billing period tracker.</p>
+          </div>
+
+          <div class="topbar-actions">
+            <span class="pill" id="htpInvoiceLabel">Invoice for May 2026</span>
+          </div>
+        </header>
+
+        <section class="period-card">
+          <div class="field">
+            <label for="htpStartDate">Start Date</label>
+            <input id="htpStartDate" class="input" type="date" />
+          </div>
+
+          <div class="field">
+            <label for="htpEndDate">End Date</label>
+            <input id="htpEndDate" class="input" type="date" />
+          </div>
+
+          <button id="applyHtpPeriodBtn" class="primary-btn">Apply Period</button>
+          <p class="period-note">Weekends are excluded automatically. Totals use the selected work period.</p>
+        </section>
+
+        <section class="invoice-template-card">
+          <div class="field">
+            <label for="htpInvoiceNumber">Invoice Number</label>
+            <input id="htpInvoiceNumber" class="input" type="text" placeholder="Example: 38" />
+          </div>
+
+          <div class="field">
+            <label for="htpTemplateFile">Default Invoice Template PDF</label>
+            <input id="htpTemplateFile" class="input" type="file" accept="application/pdf" />
+          </div>
+
+          <button id="uploadHtpTemplateBtn" class="secondary-btn" type="button">Upload Template</button>
+          <button id="generateHtpInvoiceBtn" class="primary-btn" type="button">Generate Invoice PDF</button>
+
+          <p id="htpTemplateStatus" class="period-note">No template uploaded yet.</p>
+        </section>
+
+        <section class="summary-grid four">
+          <article class="summary-card">
+            <div class="card-icon blue">⏱</div>
+            <div>
+              <p>Rate per hour</p>
+              <div class="inline-input-wrap">
+                <span>$</span>
+                <input id="htpRate" type="number" min="0" step="0.01" />
+                <button class="icon-btn" title="Editable rate">✎</button>
+              </div>
+
+              <div class="rate-refresh-row">
+                <small id="htpExchangeText">Loading PHP rate...</small>
+                <button class="mini-btn" id="refreshRateHtpBtn" type="button">Refresh</button>
+              </div>
+              <small class="rate-note">Auto-refreshes every 5 minutes.</small>
+            </div>
+          </article>
+
+          <article class="summary-card">
+            <div class="card-icon green">🕒</div>
+            <div>
+              <p>Total hours</p>
+              <h2 id="htpTotalHours">0.00</h2>
+            </div>
+          </article>
+
+          <article class="summary-card">
+            <div class="card-icon blue">＄</div>
+            <div>
+              <p>Total earnings (USD)</p>
+              <h2 id="htpTotalUsd">$0.00</h2>
+            </div>
+          </article>
+
+          <article class="summary-card">
+            <div class="card-icon purple">₱</div>
+            <div>
+              <p>Total earnings (PHP)</p>
+              <h2 id="htpTotalPhp">₱0.00</h2>
+              <small>Minus the 15% deduction</small>
+            </div>
+          </article>
+        </section>
+
+        <section class="content-grid">
+          <div class="table-card">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Day</th>
+                    <th>Hours</th>
+                    <th>Earnings (USD)</th>
+                    <th>Earnings (PHP)</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="htpTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <aside class="invoice-card">
+            <h3>Invoice Summary</h3>
+            <div class="summary-row"><span>Total Earnings in USD</span><strong id="sumUsd">$0.00</strong></div>
+            <div class="summary-row"><span>Total Hours</span><strong id="sumHours">0.00</strong></div>
+            <div class="summary-row"><span>Actual Conversion Rate</span><strong id="sumRate">0.00</strong></div>
+            <hr />
+            <div class="summary-row"><span>Total Gross Earnings</span><strong id="sumGross">₱0.00</strong></div>
+            <div class="summary-row"><span>15% Deduction</span><strong id="sumDeduction">₱0.00</strong></div>
+            <hr />
+            <div class="summary-row net"><span>Net Earnings</span><strong id="sumNet">₱0.00</strong></div>
+          </aside>
+        </section>
+
+        <div class="info-bar">
+          ℹ️ Hours default to 4.00 and can be edited. Weekends are skipped automatically. Totals use the selected invoice period.
+        </div>
+      </section>
+
+      <section id="reportsPage" class="page">
+        <header class="topbar">
+          <div>
+            <h1>Reports</h1>
+            <p class="muted">Monthly and yearly salary overview.</p>
+          </div>
+
+          <div class="topbar-actions">
+            <select id="reportSource" class="input">
+              <option value="all">All trackers</option>
+              <option value="quri">QURI only</option>
+              <option value="htp">HTP only</option>
+            </select>
+
+            <select id="reportYear" class="input"></select>
+          </div>
+        </header>
+
+        <section class="summary-grid four">
+          <article class="summary-card">
+            <div class="card-icon blue">＄</div>
+            <div>
+              <p>This Month</p>
+              <h2 id="reportThisMonth">$0.00</h2>
+              <small id="reportThisMonthPhp">₱0.00</small>
+            </div>
+          </article>
+
+          <article class="summary-card">
+            <div class="card-icon green">📅</div>
+            <div>
+              <p>This Year</p>
+              <h2 id="reportThisYear">$0.00</h2>
+              <small id="reportThisYearPhp">₱0.00</small>
+            </div>
+          </article>
+
+          <article class="summary-card">
+            <div class="card-icon purple">↗</div>
+            <div>
+              <p>Average Monthly</p>
+              <h2 id="reportAverage">$0.00</h2>
+              <small id="reportAveragePhp">₱0.00</small>
+            </div>
+          </article>
+
+          <article class="summary-card">
+            <div class="card-icon orange">🏆</div>
+            <div>
+              <p>Highest Month</p>
+              <h2 id="reportHighestMonth">N/A</h2>
+              <small id="reportHighestValue">$0.00</small>
+            </div>
+          </article>
+        </section>
+
+        <section class="chart-card">
+          <div class="section-heading">
+            <h3>Monthly salary trend (USD)</h3>
+            <span class="legend-dot">● Earnings (USD)</span>
+          </div>
+          <div id="barChart" class="bar-chart"></div>
+        </section>
+
+        <section class="content-grid">
+          <div class="table-card">
+            <h3 class="card-title">Monthly totals</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>USD</th>
+                  <th>PHP</th>
+                </tr>
+              </thead>
+              <tbody id="monthlyTotalsBody"></tbody>
+            </table>
+          </div>
+
+          <aside class="invoice-card">
+            <h3>Yearly Earnings Overview</h3>
+            <div class="summary-row"><span>Total Earnings (USD)</span><strong id="yearUsd">$0.00</strong></div>
+            <div class="summary-row"><span>Total Earnings (PHP)</span><strong id="yearPhp">₱0.00</strong></div>
+            <div class="summary-row"><span>Total Hours</span><strong id="yearHours">0.00</strong></div>
+            <div class="summary-row"><span>Average Hourly Rate</span><strong id="avgHourly">$0.00</strong></div>
+          </aside>
+        </section>
+      </section>
+
+      <section id="settingsPage" class="page">
+        <header class="topbar">
+          <div>
+            <h1>Settings</h1>
+            <p class="muted">Firebase and local backup settings.</p>
+          </div>
+        </header>
+
+        <section class="table-card settings-card">
+          <h3>Storage</h3>
+          <p>This version saves to Firebase Firestore and also keeps a local browser backup.</p>
+          <p><strong>Cloud status:</strong> <span id="cloudStatus">Connecting...</span></p>
+
+          <div class="settings-actions">
+            <button id="resetLocalDataBtn" class="secondary-btn">Reset Local Data Only</button>
+            <button id="resetAllDataBtn" class="danger-btn">Reset All Tracker Data</button>
+          </div>
+
+          <p class="muted">Reset All Tracker Data clears QURI and HTP entries from Firebase and this browser.</p>
+        </section>
+      </section>
+
+      <section id="helpPage" class="page">
+        <header class="topbar">
+          <div>
+            <h1>Help</h1>
+            <p class="muted">Quick notes.</p>
+          </div>
+        </header>
+
+        <section class="table-card settings-card">
+          <h3>How it works</h3>
+          <p>QURI tracks tasks and hours by month. HTP tracks hours only by custom invoice period. Reports can show All trackers, QURI only, or HTP only.</p>
+          <p>HTP invoice generation uses your uploaded PDF template and overlays only USD-based values.</p>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <div id="monthPickerModal" class="month-picker-modal hidden">
+    <div class="month-picker-panel" role="dialog" aria-modal="true" aria-label="Pick month and year">
+      <div class="month-picker-header">
+        <button id="prevYearBtn" class="year-nav-btn" type="button">‹</button>
+
+        <div class="year-display-wrap">
+          <button id="yearDisplayBtn" class="year-display-btn" type="button">2026</button>
+
+          <div id="yearDropdown" class="year-dropdown hidden">
+            <div id="yearList" class="year-list"></div>
+          </div>
+        </div>
+
+        <button id="nextYearBtn" class="year-nav-btn" type="button">›</button>
+      </div>
+
+      <div id="quriMonthGrid" class="month-grid"></div>
+    </div>
+  </div>
+</body>
+</html>
