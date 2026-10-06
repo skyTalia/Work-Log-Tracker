@@ -5,32 +5,64 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Work Log Tracker</title>
   <link rel="stylesheet" href="styles.css" />
+  <script>
+    // Apply the saved (or system) theme before first paint to avoid a flash.
+    try {
+      const saved = localStorage.getItem("workLogTracker.theme");
+      document.documentElement.dataset.theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    } catch {}
+  </script>
 
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
   <script defer src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
   <script defer src="app.js"></script>
 </head>
 <body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 21h18M7 17v-6M12 17V6M17 17v-4"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5h.01"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><path d="M7.5 7.5h.01"/></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.7-4.4L4 8M4 4v4h4M4 13a8 8 0 0 0 14.7 4.4L20 16M20 20v-4h-4"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  </svg>
+
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-icon">⏱</div>
+        <div class="brand-icon"><svg class="icon"><use href="#i-clock"/></svg></div>
         <div class="brand-title">Work Log Tracker</div>
       </div>
 
       <nav class="nav">
-        <button class="nav-item active" data-page="quri">📄 <span>QURI</span></button>
-        <button class="nav-item" data-page="htp">📅 <span>HTP</span></button>
-        <button class="nav-item" data-page="reports">📊 <span>Reports</span></button>
-        <button class="nav-item" data-page="settings">⚙️ <span>Settings</span></button>
+        <button class="nav-item active" data-page="quri"><svg class="icon"><use href="#i-file"/></svg><span>QURI</span></button>
+        <button class="nav-item" data-page="htp"><svg class="icon"><use href="#i-calendar"/></svg><span>HTP</span></button>
+        <button class="nav-item" data-page="reports"><svg class="icon"><use href="#i-chart"/></svg><span>Reports</span></button>
+        <div class="nav-divider"></div>
+        <button class="nav-item" data-page="settings"><svg class="icon"><use href="#i-sliders"/></svg><span>Settings</span></button>
+        <button class="nav-item" data-page="help"><svg class="icon"><use href="#i-help"/></svg><span>Help</span></button>
       </nav>
 
-      <div class="nav-divider"></div>
+      <div class="sidebar-footer">
+        <div class="sync-status" id="syncStatus" title="Cloud sync status">
+          <span class="sync-dot"></span>
+          <span class="sync-text">Connecting...</span>
+        </div>
 
-      <button class="nav-item" id="exportCurrentBtn">⬇️ <span>Export</span></button>
-      <button class="nav-item" data-page="help">❔ <span>Help</span></button>
+        <button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
+          <svg class="icon icon-moon"><use href="#i-moon"/></svg>
+          <svg class="icon icon-sun"><use href="#i-sun"/></svg>
+        </button>
+      </div>
     </aside>
 
     <main class="main-content">
@@ -42,54 +74,49 @@
           </div>
 
           <div class="topbar-actions">
-            <div class="month-picker-wrap">
-              <label class="picker-label">Pick a month to generate</label>
-              <button id="openQuriMonthPicker" class="month-picker-trigger" type="button">
-                <span id="selectedQuriMonthLabel">Select Month</span>
-                <span class="month-picker-caret">▾</span>
-              </button>
-            </div>
+            <button id="openQuriMonthPicker" class="month-picker-trigger" type="button" aria-haspopup="dialog">
+              <svg class="icon"><use href="#i-calendar"/></svg>
+              <span id="selectedQuriMonthLabel">Select Month</span>
+              <svg class="icon caret"><use href="#i-chevron"/></svg>
+            </button>
           </div>
         </header>
 
         <section class="summary-grid four">
           <article class="summary-card">
-            <div class="card-icon blue">⏱</div>
-            <div>
-              <p>Rate per hour</p>
+            <div class="card-icon blue"><svg class="icon"><use href="#i-tag"/></svg></div>
+            <div class="card-body">
+              <label for="quriRate">Rate per hour</label>
               <div class="inline-input-wrap">
                 <span>$</span>
-                <input id="quriRate" type="number" min="0" step="0.01" />
-                <button class="icon-btn" title="Editable rate">✎</button>
+                <input id="quriRate" type="number" inputmode="decimal" min="0" step="0.01" />
               </div>
-
               <div class="rate-refresh-row">
-                <small id="quriExchangeText">Loading PHP rate...</small>
-                <button class="mini-btn" id="refreshRateQuriBtn" type="button">Refresh</button>
+                <small data-exchange-text>Loading PHP rate...</small>
+                <button class="mini-btn" data-refresh-rate type="button" title="Refresh exchange rate (auto every 5 min)" aria-label="Refresh exchange rate"><svg class="icon"><use href="#i-refresh"/></svg></button>
               </div>
-              <small class="rate-note">Auto-refreshes every 5 minutes.</small>
             </div>
           </article>
 
           <article class="summary-card">
-            <div class="card-icon green">🕒</div>
-            <div>
+            <div class="card-icon green"><svg class="icon"><use href="#i-clock"/></svg></div>
+            <div class="card-body">
               <p>Total hours</p>
               <h2 id="quriTotalHours">0.00</h2>
             </div>
           </article>
 
           <article class="summary-card">
-            <div class="card-icon blue">＄</div>
-            <div>
+            <div class="card-icon blue text">$</div>
+            <div class="card-body">
               <p>Total earnings (USD)</p>
               <h2 id="quriTotalUsd">$0.00</h2>
             </div>
           </article>
 
           <article class="summary-card">
-            <div class="card-icon purple">₱</div>
-            <div>
+            <div class="card-icon purple text">₱</div>
+            <div class="card-body">
               <p>Total earnings (PHP)</p>
               <h2 id="quriTotalPhp">₱0.00</h2>
             </div>
@@ -98,15 +125,15 @@
 
         <section class="table-card">
           <div class="table-scroll">
-            <table>
+            <table class="log-table">
               <thead>
                 <tr>
                   <th>Date</th>
                   <th>Day</th>
-                  <th>Tasks</th>
+                  <th class="tasks-col">Tasks</th>
                   <th>Hours</th>
-                  <th>Earnings ($)</th>
-                  <th>Actions</th>
+                  <th class="num">Earnings</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody id="quriTableBody"></tbody>
@@ -115,7 +142,7 @@
         </section>
 
         <div class="info-bar">
-          ℹ️ Weekends are marked automatically. Exchange rate refreshes every 5 minutes. Rate, hours, and tasks can be edited inline.
+          Changes save automatically. Weekends are marked as days off.
         </div>
       </section>
 
@@ -127,83 +154,81 @@
           </div>
 
           <div class="topbar-actions">
-            <span class="pill" id="htpInvoiceLabel">Invoice for May 2026</span>
+            <span class="pill" id="htpInvoiceLabel">Invoice</span>
           </div>
         </header>
 
-        <section class="period-card">
-          <div class="field">
-            <label for="htpStartDate">Start Date</label>
-            <input id="htpStartDate" class="input" type="date" />
+        <section class="htp-setup">
+          <div class="panel">
+            <h3>Billing period</h3>
+            <div class="form-row">
+              <div class="field">
+                <label for="htpStartDate">Start date</label>
+                <input id="htpStartDate" class="input" type="date" />
+              </div>
+
+              <div class="field">
+                <label for="htpEndDate">End date</label>
+                <input id="htpEndDate" class="input" type="date" />
+              </div>
+
+              <button id="applyHtpPeriodBtn" class="primary-btn" type="button">Apply period</button>
+            </div>
+            <p class="field-note">Weekends are excluded. New weekdays default to 4.00 hours.</p>
           </div>
 
-          <div class="field">
-            <label for="htpEndDate">End Date</label>
-            <input id="htpEndDate" class="input" type="date" />
+          <div class="panel">
+            <h3>Invoice</h3>
+            <div class="form-row">
+              <div class="field">
+                <label for="htpInvoiceNumber">Invoice number</label>
+                <input id="htpInvoiceNumber" class="input" type="text" placeholder="e.g. 38" />
+              </div>
+
+              <button id="generateHtpInvoiceBtn" class="primary-btn" type="button">Generate PDF</button>
+            </div>
+            <p class="field-note">Uses the HealthTek invoice layout. Your name, email, and address come from <button class="link-btn" type="button" data-page="settings">Settings</button>.</p>
           </div>
-
-          <button id="applyHtpPeriodBtn" class="primary-btn">Apply Period</button>
-          <p class="period-note">Weekends are excluded automatically. Totals use the selected work period.</p>
-        </section>
-
-        <section class="invoice-template-card">
-          <div class="field">
-            <label for="htpInvoiceNumber">Invoice Number</label>
-            <input id="htpInvoiceNumber" class="input" type="text" placeholder="Example: 38" />
-          </div>
-
-          <div class="field">
-            <label for="htpTemplateFile">Default Invoice Template PDF</label>
-            <input id="htpTemplateFile" class="input" type="file" accept="application/pdf" />
-          </div>
-
-          <button id="uploadHtpTemplateBtn" class="secondary-btn" type="button">Upload Template</button>
-          <button id="generateHtpInvoiceBtn" class="primary-btn" type="button">Generate Invoice PDF</button>
-
-          <p id="htpTemplateStatus" class="period-note">No template uploaded yet.</p>
         </section>
 
         <section class="summary-grid four">
           <article class="summary-card">
-            <div class="card-icon blue">⏱</div>
-            <div>
-              <p>Rate per hour</p>
+            <div class="card-icon blue"><svg class="icon"><use href="#i-tag"/></svg></div>
+            <div class="card-body">
+              <label for="htpRate">Rate per hour</label>
               <div class="inline-input-wrap">
                 <span>$</span>
-                <input id="htpRate" type="number" min="0" step="0.01" />
-                <button class="icon-btn" title="Editable rate">✎</button>
+                <input id="htpRate" type="number" inputmode="decimal" min="0" step="0.01" />
               </div>
-
               <div class="rate-refresh-row">
-                <small id="htpExchangeText">Loading PHP rate...</small>
-                <button class="mini-btn" id="refreshRateHtpBtn" type="button">Refresh</button>
+                <small data-exchange-text>Loading PHP rate...</small>
+                <button class="mini-btn" data-refresh-rate type="button" title="Refresh exchange rate (auto every 5 min)" aria-label="Refresh exchange rate"><svg class="icon"><use href="#i-refresh"/></svg></button>
               </div>
-              <small class="rate-note">Auto-refreshes every 5 minutes.</small>
             </div>
           </article>
 
           <article class="summary-card">
-            <div class="card-icon green">🕒</div>
-            <div>
+            <div class="card-icon green"><svg class="icon"><use href="#i-clock"/></svg></div>
+            <div class="card-body">
               <p>Total hours</p>
               <h2 id="htpTotalHours">0.00</h2>
             </div>
           </article>
 
           <article class="summary-card">
-            <div class="card-icon blue">＄</div>
-            <div>
+            <div class="card-icon blue text">$</div>
+            <div class="card-body">
               <p>Total earnings (USD)</p>
               <h2 id="htpTotalUsd">$0.00</h2>
             </div>
           </article>
 
           <article class="summary-card">
-            <div class="card-icon purple">₱</div>
-            <div>
-              <p>Total earnings (PHP)</p>
+            <div class="card-icon purple text">₱</div>
+            <div class="card-body">
+              <p>Net earnings (PHP)</p>
               <h2 id="htpTotalPhp">₱0.00</h2>
-              <small>Minus the 15% deduction</small>
+              <small>After 15% deduction</small>
             </div>
           </article>
         </section>
@@ -211,15 +236,15 @@
         <section class="content-grid">
           <div class="table-card">
             <div class="table-scroll">
-              <table>
+              <table class="log-table">
                 <thead>
                   <tr>
                     <th>Date</th>
                     <th>Day</th>
                     <th>Hours</th>
-                    <th>Earnings (USD)</th>
-                    <th>Earnings (PHP)</th>
-                    <th>Actions</th>
+                    <th class="num">USD</th>
+                    <th class="num">PHP</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody id="htpTableBody"></tbody>
@@ -228,73 +253,69 @@
           </div>
 
           <aside class="invoice-card">
-            <h3>Invoice Summary</h3>
-            <div class="summary-row"><span>Total Earnings in USD</span><strong id="sumUsd">$0.00</strong></div>
-            <div class="summary-row"><span>Total Hours</span><strong id="sumHours">0.00</strong></div>
-            <div class="summary-row"><span>Actual Conversion Rate</span><strong id="sumRate">0.00</strong></div>
+            <h3>Invoice summary</h3>
+            <div class="summary-row"><span>Total earnings (USD)</span><strong id="sumUsd">$0.00</strong></div>
+            <div class="summary-row"><span>Total hours</span><strong id="sumHours">0.00</strong></div>
+            <div class="summary-row"><span>Conversion rate</span><strong id="sumRate">0.00</strong></div>
             <hr />
-            <div class="summary-row"><span>Total Gross Earnings</span><strong id="sumGross">₱0.00</strong></div>
-            <div class="summary-row"><span>15% Deduction</span><strong id="sumDeduction">₱0.00</strong></div>
+            <div class="summary-row"><span>Gross earnings</span><strong id="sumGross">₱0.00</strong></div>
+            <div class="summary-row"><span>15% deduction</span><strong id="sumDeduction">−₱0.00</strong></div>
             <hr />
-            <div class="summary-row net"><span>Net Earnings</span><strong id="sumNet">₱0.00</strong></div>
+            <div class="summary-row net"><span>Net earnings</span><strong id="sumNet">₱0.00</strong></div>
           </aside>
         </section>
-
-        <div class="info-bar">
-          ℹ️ Hours default to 4.00 and can be edited. Weekends are skipped automatically. Totals use the selected invoice period.
-        </div>
       </section>
 
       <section id="reportsPage" class="page">
         <header class="topbar">
           <div>
             <h1>Reports</h1>
-            <p class="muted">Monthly and yearly salary overview.</p>
+            <p class="muted">Monthly and yearly earnings overview.</p>
           </div>
 
           <div class="topbar-actions">
-            <select id="reportSource" class="input">
+            <select id="reportSource" class="input" aria-label="Tracker">
               <option value="all">All trackers</option>
               <option value="quri">QURI only</option>
               <option value="htp">HTP only</option>
             </select>
 
-            <select id="reportYear" class="input"></select>
+            <select id="reportYear" class="input" aria-label="Year"></select>
           </div>
         </header>
 
         <section class="summary-grid four">
           <article class="summary-card">
-            <div class="card-icon blue">＄</div>
-            <div>
-              <p>This Month</p>
+            <div class="card-icon blue text">$</div>
+            <div class="card-body">
+              <p id="reportThisMonthLabel">This month</p>
               <h2 id="reportThisMonth">$0.00</h2>
               <small id="reportThisMonthPhp">₱0.00</small>
             </div>
           </article>
 
           <article class="summary-card">
-            <div class="card-icon green">📅</div>
-            <div>
-              <p>This Year</p>
+            <div class="card-icon green"><svg class="icon"><use href="#i-calendar"/></svg></div>
+            <div class="card-body">
+              <p id="reportYearLabel">Year total</p>
               <h2 id="reportThisYear">$0.00</h2>
               <small id="reportThisYearPhp">₱0.00</small>
             </div>
           </article>
 
           <article class="summary-card">
-            <div class="card-icon purple">↗</div>
-            <div>
-              <p>Average Monthly</p>
+            <div class="card-icon purple"><svg class="icon"><use href="#i-trend"/></svg></div>
+            <div class="card-body">
+              <p>Monthly average</p>
               <h2 id="reportAverage">$0.00</h2>
               <small id="reportAveragePhp">₱0.00</small>
             </div>
           </article>
 
           <article class="summary-card">
-            <div class="card-icon orange">🏆</div>
-            <div>
-              <p>Highest Month</p>
+            <div class="card-icon orange"><svg class="icon"><use href="#i-trophy"/></svg></div>
+            <div class="card-body">
+              <p>Highest month</p>
               <h2 id="reportHighestMonth">N/A</h2>
               <small id="reportHighestValue">$0.00</small>
             </div>
@@ -303,8 +324,7 @@
 
         <section class="chart-card">
           <div class="section-heading">
-            <h3>Monthly salary trend (USD)</h3>
-            <span class="legend-dot">● Earnings (USD)</span>
+            <h3>Monthly earnings (USD)</h3>
           </div>
           <div id="barChart" class="bar-chart"></div>
         </section>
@@ -312,24 +332,27 @@
         <section class="content-grid">
           <div class="table-card">
             <h3 class="card-title">Monthly totals</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th>Month</th>
-                  <th>USD</th>
-                  <th>PHP</th>
-                </tr>
-              </thead>
-              <tbody id="monthlyTotalsBody"></tbody>
-            </table>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Month</th>
+                    <th class="num">Hours</th>
+                    <th class="num">USD</th>
+                    <th class="num">PHP</th>
+                  </tr>
+                </thead>
+                <tbody id="monthlyTotalsBody"></tbody>
+              </table>
+            </div>
           </div>
 
           <aside class="invoice-card">
-            <h3>Yearly Earnings Overview</h3>
-            <div class="summary-row"><span>Total Earnings (USD)</span><strong id="yearUsd">$0.00</strong></div>
-            <div class="summary-row"><span>Total Earnings (PHP)</span><strong id="yearPhp">₱0.00</strong></div>
-            <div class="summary-row"><span>Total Hours</span><strong id="yearHours">0.00</strong></div>
-            <div class="summary-row"><span>Average Hourly Rate</span><strong id="avgHourly">$0.00</strong></div>
+            <h3>Yearly overview</h3>
+            <div class="summary-row"><span>Total earnings (USD)</span><strong id="yearUsd">$0.00</strong></div>
+            <div class="summary-row"><span>Total earnings (PHP)</span><strong id="yearPhp">₱0.00</strong></div>
+            <div class="summary-row"><span>Total hours</span><strong id="yearHours">0.00</strong></div>
+            <div class="summary-row"><span>Average hourly rate</span><strong id="avgHourly">$0.00</strong></div>
           </aside>
         </section>
       </section>
@@ -338,21 +361,57 @@
         <header class="topbar">
           <div>
             <h1>Settings</h1>
-            <p class="muted">Firebase and local backup settings.</p>
+            <p class="muted">Invoice details and data storage.</p>
           </div>
         </header>
 
-        <section class="table-card settings-card">
+        <section class="panel settings-card">
+          <h3>Invoice details</h3>
+          <p class="muted">Printed on HTP invoices. Changes save automatically.</p>
+
+          <div class="profile-grid">
+            <div class="field">
+              <label for="profileName">Name</label>
+              <input id="profileName" class="input" type="text" data-profile="name" autocomplete="name" />
+            </div>
+            <div class="field">
+              <label for="profilePosition">Position</label>
+              <input id="profilePosition" class="input" type="text" data-profile="position" />
+            </div>
+            <div class="field">
+              <label for="profileEmail">Email address</label>
+              <input id="profileEmail" class="input" type="email" data-profile="email" autocomplete="email" />
+            </div>
+            <div class="field">
+              <label for="profileTerms">Payment terms</label>
+              <input id="profileTerms" class="input" type="text" data-profile="paymentTerms" />
+            </div>
+            <div class="field span-2">
+              <label for="profileAddress">Personal address</label>
+              <input id="profileAddress" class="input" type="text" data-profile="address" autocomplete="street-address" />
+            </div>
+            <div class="field">
+              <label for="profileBillTo">Bill to</label>
+              <input id="profileBillTo" class="input" type="text" data-profile="billTo" />
+            </div>
+            <div class="field">
+              <label for="profileService">Service</label>
+              <input id="profileService" class="input" type="text" data-profile="service" />
+            </div>
+          </div>
+        </section>
+
+        <section class="panel settings-card">
           <h3>Storage</h3>
-          <p>This version saves to Firebase Firestore and also keeps a local browser backup.</p>
+          <p>Data is saved to Firebase Firestore, with a backup kept in this browser.</p>
           <p><strong>Cloud status:</strong> <span id="cloudStatus">Connecting...</span></p>
 
           <div class="settings-actions">
-            <button id="resetLocalDataBtn" class="secondary-btn">Reset Local Data Only</button>
-            <button id="resetAllDataBtn" class="danger-btn">Reset All Tracker Data</button>
+            <button id="resetLocalDataBtn" class="secondary-btn" type="button">Reset local data only</button>
+            <button id="resetAllDataBtn" class="danger-btn" type="button">Reset all tracker data</button>
           </div>
 
-          <p class="muted">Reset All Tracker Data clears QURI and HTP entries from Firebase and this browser.</p>
+          <p class="muted">"Reset all tracker data" clears QURI and HTP entries from Firebase and this browser. This cannot be undone.</p>
         </section>
       </section>
 
@@ -364,31 +423,33 @@
           </div>
         </header>
 
-        <section class="table-card settings-card">
+        <section class="panel settings-card">
           <h3>How it works</h3>
-          <p>QURI tracks tasks and hours by month. HTP tracks hours only by custom invoice period. Reports can show All trackers, QURI only, or HTP only.</p>
-          <p>HTP invoice generation uses your uploaded PDF template and overlays only USD-based values.</p>
+          <p><strong>QURI</strong> tracks tasks and hours by month. Pick a month, then type tasks and hours for each weekday — everything saves as you type.</p>
+          <p><strong>HTP</strong> tracks hours only for a custom billing period. Set the start and end dates and click Apply. Each weekday starts at 4.00 hours.</p>
+          <p><strong>Invoices</strong> follow the HealthTek invoice layout. Fill in Settings → Invoice details once, then enter the invoice number on the HTP page and click Generate PDF. Generated invoices are downloaded, not stored.</p>
+          <p><strong>Reports</strong> show earnings for all trackers, QURI only, or HTP only. PHP values use the current exchange rate.</p>
         </section>
       </section>
     </main>
   </div>
 
-  <div id="toastContainer" class="toast-container"></div>
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
   <div id="monthPickerModal" class="month-picker-modal hidden">
     <div class="month-picker-panel" role="dialog" aria-modal="true" aria-label="Pick month and year">
       <div class="month-picker-header">
-        <button id="prevYearBtn" class="year-nav-btn" type="button">‹</button>
+        <button id="prevYearBtn" class="year-nav-btn" type="button" aria-label="Previous year">‹</button>
 
         <div class="year-display-wrap">
-          <button id="yearDisplayBtn" class="year-display-btn" type="button">2026</button>
+          <button id="yearDisplayBtn" class="year-display-btn" type="button" aria-label="Choose year">2026</button>
 
           <div id="yearDropdown" class="year-dropdown hidden">
             <div id="yearList" class="year-list"></div>
           </div>
         </div>
 
-        <button id="nextYearBtn" class="year-nav-btn" type="button">›</button>
+        <button id="nextYearBtn" class="year-nav-btn" type="button" aria-label="Next year">›</button>
       </div>
 
       <div id="quriMonthGrid" class="month-grid"></div>
